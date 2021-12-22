@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Resources:
+
+  MyQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      DelaySeconds: 0
+      MessageRetentionPeriod: 345600
+      QueueName: MyQueue
+      ReceiveMessageWaitTimeSeconds: 0
+#      RedriveAllowPolicy: Json
+#      RedrivePolicy: Json
+      VisibilityTimeout: 30
+
+  MyTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties: 
+      PrimaryKey:
+        Name: DateTime
+        Type: String
+      TableName: Sums
+
+  scheduleProducerLambda:
+    DependsOn: [LambdaProducer]
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'This is the trigger for the first lambda'
+      ScheduleExpression: "rate(2 minutes)"
+      State: ENABLED
+      Targets: 
+        -
+          Arn: !GetAtt LambdaProducer.Arn
+          Id: 1234IDeclareAEBWar
+
+
+  # Lambdas
+  LambdaProducer:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaServiceRole
+    Properties:
+      Handler: producer.lambda_handler
+      CodeUri: . 
+      Description: 'The producer function'
+      MemorySize: 256
+      Timeout: 5
+      Role: !GetAtt LambdaServiceRole.Arn
+      Runtime: python3.9
+
+  LambdaConsumer:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaServiceRole
+    Properties:
+      Handler: consumer.lambda_handler
+      CodeUri: . 
+      Description: 'The consumer function'
+      MemorySize: 256
+      Timeout: 5
+      Role: !GetAtt LambdaServiceRole.Arn
+      Runtime: python3.9
+
+  PermissionForEventsToInvokeLambda: 
+    DependsOn: [LambdaProducer]
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaProducer"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt: 
+          - "scheduleProducerLambda"
+          - "Arn"
+
+  # Roles
+  LambdaServiceRole:
+    Type:  AWS::IAM::Role
+    Properties:
+      RoleName: LambdaServiceRole
+      Description: Allows Lambda functions to call DyDB, SQS.
+      Path: /
+      # Unsure what this does?
+      # https://devops.stackexchange.com/questions/5094/what-is-the-purpose-of-assumerolepolicydocument-in-iam/5099
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: SNSRolePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sqs:*'
+                  - 'dynamodb:*'
+                Resource: '*'
+
+
+
+
+
+
+
+
