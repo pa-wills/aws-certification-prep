@@ -1,18 +1,34 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 
-Resources:
+Parameters:
+  QueueDelaySecondsParameter:
+    Default: 0
+    Type: Number
+  QueueMessageRetentionPeriodParameter:
+    Default: 345600
+    Type: Number
+  QueueVisibilityTimeoutParameter:
+    Default: 30
+    Type: Number
+  ScheduleProducerPeriodicityParameter:
+    Default: "rate(2 minutes)"
+    Type: String
 
+Resources:
   MyQueue:
     Type: AWS::SQS::Queue
     Properties: 
-      DelaySeconds: 0
-      MessageRetentionPeriod: 345600
+      DelaySeconds:
+        Ref: QueueDelaySecondsParameter
+      MessageRetentionPeriod: 
+        Ref: QueueMessageRetentionPeriodParameter
       QueueName: MyQueue
       ReceiveMessageWaitTimeSeconds: 0
 #      RedriveAllowPolicy: Json
 #      RedrivePolicy: Json
-      VisibilityTimeout: 30
+      VisibilityTimeout: 
+        Ref: QueueVisibilityTimeoutParameter
 
   MyTable:
     Type: AWS::Serverless::SimpleTable
@@ -22,18 +38,34 @@ Resources:
         Type: String
       TableName: Sums
 
+  # Event Bridges
   scheduleProducerLambda:
     DependsOn: [LambdaProducer]
     Type: AWS::Events::Rule
     Properties:
-      Description: 'This is the trigger for the first lambda'
-      ScheduleExpression: "rate(2 minutes)"
+      Description: 'This is the trigger for the producer lambda'
+      ScheduleExpression:
+        Ref: ScheduleProducerPeriodicityParameter
       State: ENABLED
       Targets: 
         -
           Arn: !GetAtt LambdaProducer.Arn
           Id: 1234IDeclareAEBWar
 
+  triggerConsumerLambda:
+    DependsOn: [LambdaConsumer]
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'This is the trigger for the consumer lambda'
+      EventPattern: 
+        {
+          "source": [{"prefix": "" }] # https://stackoverflow.com/questions/62406933/aws-eventbridge-pattern-to-capture-all-events
+        }
+      State: ENABLED
+      Targets: 
+        -
+          Arn: !GetAtt LambdaConsumer.Arn
+          Id: 56878EveryoneConsumerate
 
   # Lambdas
   LambdaProducer:
@@ -60,7 +92,7 @@ Resources:
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
 
-  PermissionForEventsToInvokeLambda: 
+  PermissionForEventsToInvokeProducerLambda: 
     DependsOn: [LambdaProducer]
     Type: AWS::Lambda::Permission
     Properties: 
@@ -71,6 +103,19 @@ Resources:
       SourceArn:
         Fn::GetAtt: 
           - "scheduleProducerLambda"
+          - "Arn"
+
+  PermissionForEventsToInvokeConsumerLambda: 
+    DependsOn: [LambdaConsumer]
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaConsumer"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt: 
+          - "triggerConsumerLambda"
           - "Arn"
 
   # Roles
@@ -99,11 +144,5 @@ Resources:
                   - 'sqs:*'
                   - 'dynamodb:*'
                 Resource: '*'
-
-
-
-
-
-
 
 
