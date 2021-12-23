@@ -1,6 +1,7 @@
 from random import randrange
 
 import boto3
+import datetime
 import json
 
 def lambda_handler(event, context):
@@ -12,10 +13,13 @@ def lambda_handler(event, context):
     operand_1 = int(response_sqs["Messages"][0]["Body"])
     operand_2 = randrange(100)
 
+    sentTimeStampEpoch = int(int(response_sqs["Messages"][0]["Attributes"]["SentTimestamp"]) / 1000)
+    sentTimeStampStr = datetime.datetime.fromtimestamp(sentTimeStampEpoch)  
+
     table = dydb.Table("Sums")
     response_dydb = table.put_item(
         Item = {
-            'DateTime': response_sqs["ResponseMetadata"]["HTTPHeaders"]["date"],
+            'DateTime': str(sentTimeStampStr),
             'operand_1': operand_1,
             'operand_2': operand_2,
             'sum': (operand_1 + operand_2)
@@ -26,4 +30,6 @@ def lambda_handler(event, context):
 
     return {
         'statusCode': 200,
+        'message': json.dumps(response_sqs),
+        'sent': json.dumps(str(sentTimeStampStr)),
     }
