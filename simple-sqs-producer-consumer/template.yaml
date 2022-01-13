@@ -31,12 +31,19 @@ Resources:
         Ref: QueueVisibilityTimeoutParameter
 
   MyTable:
-    Type: AWS::Serverless::SimpleTable
+    Type: AWS::DynamoDB::Table
     Properties: 
-      PrimaryKey:
-        Name: DateTime
-        Type: String
+      AttributeDefinitions:
+        - AttributeName: "DateTime"
+          AttributeType: "S"
+      BillingMode: "PAY_PER_REQUEST"
+      KeySchema:
+        - AttributeName: "DateTime"
+          KeyType: "HASH"
       TableName: Sums
+      TimeToLiveSpecification:
+        AttributeName: "ttl"
+        Enabled: true
 
   # Event Bridges
   scheduleProducerLambda:
