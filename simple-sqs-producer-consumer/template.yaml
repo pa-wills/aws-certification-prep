@@ -59,21 +59,6 @@ Resources:
           Arn: !GetAtt LambdaProducer.Arn
           Id: 1234IDeclareAEBWar
 
-  triggerConsumerLambda:
-    DependsOn: [LambdaConsumer]
-    Type: AWS::Events::Rule
-    Properties:
-      Description: 'This is the trigger for the consumer lambda'
-      EventPattern: 
-        {
-          "source": [{"prefix": "" }] # https://stackoverflow.com/questions/62406933/aws-eventbridge-pattern-to-capture-all-events
-        }
-      State: ENABLED
-      Targets: 
-        -
-          Arn: !GetAtt LambdaConsumer.Arn
-          Id: 56878EveryoneConsumerate
-
   # Lambdas
   LambdaProducer:
     Type: AWS::Serverless::Function
@@ -94,6 +79,14 @@ Resources:
       Handler: consumer.lambda_handler
       CodeUri: . 
       Description: 'The consumer function'
+      Events:
+        # https://aws.amazon.com/blogs/aws/aws-lambda-adds-amazon-simple-queue-service-to-supported-event-sources/?utm_source=feedburner&utm_medium=feed&utm_campaign=Feed%3A+AmazonWebServicesBlog+%28Amazon+Web+Services+Blog%29
+        # Attempt to use a direct Event binding, rather than Eventbridge.
+        MySQSEvent:
+          Type: "SQS"
+          Properties:
+            BatchSize: 1
+            Queue: !GetAtt MyQueue.Arn
       MemorySize: 256
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
@@ -110,19 +103,6 @@ Resources:
       SourceArn:
         Fn::GetAtt: 
           - "scheduleProducerLambda"
-          - "Arn"
-
-  PermissionForEventsToInvokeConsumerLambda: 
-    DependsOn: [LambdaConsumer]
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaConsumer"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt: 
-          - "triggerConsumerLambda"
           - "Arn"
 
   # Roles
@@ -151,5 +131,7 @@ Resources:
                   - 'sqs:*'
                   - 'dynamodb:*'
                 Resource: '*'
+      ManagedPolicyArns:
+        - !Ref AWSLambdaBasicExecutionRole # Important. Gives Lambda perms to write to CWatch.
 
 
