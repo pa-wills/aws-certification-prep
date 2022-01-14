@@ -132,8 +132,9 @@ Resources:
                   - 'dynamodb:*'
                 Resource: '*'
       ManagedPolicyArns:
-        - !Ref AWSLambdaBasicExecutionRole # Important. Gives Lambda perms to write to CWatch.
+        # Seems sloppy to explicitly refer to this. Hopefully the ARN is static.
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # Important. Gives Lambda perms to write to CWatch.
 
-        
+
 
 

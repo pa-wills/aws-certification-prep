@@ -17,7 +17,7 @@ def lambda_handler(event, context):
         sentTimeStampStr = datetime.datetime.fromtimestamp(sentTimeStampEpoch)  
 
         ttl = int(datetime.datetime.now().timestamp()) + (3600 * 2) # I.e. Now + 2 hours. 
-        # INVARIANT: Row count should be < 100.
+        # INVARIANT: Row count should be ~<= 60 due to TTL.
 
         table = dydb.Table("Sums")
         response_dydb = table.put_item(
