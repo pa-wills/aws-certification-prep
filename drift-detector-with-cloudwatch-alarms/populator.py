@@ -41,7 +41,7 @@ def lambda_handler(event, context):
 
 	# Publish the metric
 	# The MetricName is important. Imagine my discomfort at not being able to define said Metric statically in the template.. 
-	metricData = [{"MetricName": os.environ['nameSpaceForMetric'], "Value": errorCount}] 
+	metricData = [{"MetricName": os.environ['metricNameForMetric'], "Value": errorCount}] 
 	cwClient.put_metric_data(Namespace = os.environ['nameSpaceForMetric'], MetricData = metricData)
 	
 	return {

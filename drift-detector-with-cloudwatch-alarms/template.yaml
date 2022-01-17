@@ -21,6 +21,7 @@ Parameters:
     Type: String
 
 Resources:
+
   # Queues
   DriftDetectionJobsInitiatedQueue:
     Type: AWS::SQS::Queue
@@ -54,56 +55,6 @@ Resources:
         AttributeName: "ttl"
         Enabled: true
 
-  scheduleInitiatorLambda:
-    DependsOn: [LambdaInitiator]
-    Type: AWS::Events::Rule
-    Properties:
-      Description: 'This is the trigger for the drift initiator lambda'
-      ScheduleExpression:
-        Ref: DriftDetectionInvocationPeriodicityParameter
-      State: ENABLED
-      Targets: 
-        -
-          Arn: !GetAtt LambdaInitiator.Arn
-          Id: 1234IDeclareAEBWar
-  schedulePopulatorLambda:
-    DependsOn: [LambdaPopulator]
-    Type: AWS::Events::Rule
-    Properties:
-      Description: 'This is the trigger for the drift populator lambda'
-      ScheduleExpression:
-        Ref: CustomMetricPublishingPeriodicityParameter
-      State: ENABLED
-      Targets: 
-        -
-          Arn: !GetAtt LambdaPopulator.Arn
-          Id: 1234IDeclareAEBWar
-
-  PermissionForEventsToInvokeInitiatorLambda: 
-    DependsOn: [LambdaInitiator]
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaInitiator"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt: 
-          - "scheduleInitiatorLambda"
-          - "Arn"
-  PermissionForEventsToInvokeInitiatorLambda: 
-    DependsOn: [LambdaPopulator]
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaPopulator"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt: 
-          - "schedulePopulatorLambda"
-          - "Arn"
-
   # Lambdas
   LambdaInitiator:
     Type: AWS::Serverless::Function
@@ -115,6 +66,11 @@ Resources:
       Environment:
         Variables:
           queueRef: !Ref DriftDetectionJobsInitiatedQueue
+      Events:
+        MyInitiatorScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref DriftDetectionInvocationPeriodicityParameter
       MemorySize: 256
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
@@ -156,6 +112,11 @@ Resources:
           dyDbNAme: !Ref MyTable
           metricNameForMetric: !Ref MetricNameForCloudwatchMetricParameter
           nameSpaceForMetric: !Ref NameSpaceForCloudwatchMetricParameter
+      Events:
+        MyInitiatorScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref CustomMetricPublishingPeriodicityParameter
       MemorySize: 256
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
