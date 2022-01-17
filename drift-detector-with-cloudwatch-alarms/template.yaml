@@ -1,0 +1,388 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+# TODO needs a lot of work. Adapted from earlier, obviously.
+
+Parameters:
+  DriftDetectionInvocationPeriodicityParameter:
+    Default: "rate(12 hours)"
+    Type: String
+  DriftDetectionStatusCheckLatencySecsParameter:
+    Default: 300
+    Type: Number
+  CustomMetricPublishingPeriodicityParameter:
+    Default: "rate(5 minutes)"
+    Type: String
+  NameSpaceForCloudwatchMetricParameter:
+    Default: "drift-detector-with-cloudwatch"
+    Type: String
+
+
+Resources:
+  # Queues
+  DriftDetectionJobsInitiatedQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      DelaySeconds: !Ref DriftDetectionStatusCheckLatencySecsParameter
+      MessageRetentionPeriod: 345600 # 4 days. Definitely overkill.
+      ReceiveMessageWaitTimeSeconds: 20 # let's go with long polling.
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt DriftDetectionJobsInitiatedDeadLetterQueue.Arn
+        maxReceiveCount: 2 # It'll either work first time, or not at all. Surely
+      VisibilityTimeout: 30 # it should be computed in well under 1s, but whatever. Default is fine.
+  DriftDetectionJobsInitiatedDeadLetterQueue:
+    Type: AWS::SQS::Queue
+
+  # DynamoDB Table
+  MyTable:
+    Type: AWS::DynamoDB::Table
+    Properties: 
+      AttributeDefinitions:
+        - AttributeName: "StackId"
+          AttributeType: "S"
+        - AttributeName: "Timestamp"
+          AttributeType: "S"
+      BillingMode: "PAY_PER_REQUEST"
+      KeySchema:
+        - AttributeName: "StackId"
+          KeyType: "HASH" # I.e. The partition key.
+        - AttributeName: "Timestamp"
+          KeyType: "RANGE" # I.e. The sort key.
+      TimeToLiveSpecification:
+        AttributeName: "ttl"
+        Enabled: true
+
+  scheduleInitiatorLambda:
+    DependsOn: [LambdaInitiator]
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'This is the trigger for the drift initiator lambda'
+      ScheduleExpression:
+        Ref: DriftDetectionInvocationPeriodicityParameter
+      State: ENABLED
+      Targets: 
+        -
+          Arn: !GetAtt LambdaInitiator.Arn
+          Id: 1234IDeclareAEBWar
+  schedulePopulatorLambda:
+    DependsOn: [LambdaPopulator]
+    Type: AWS::Events::Rule
+    Properties:
+      Description: 'This is the trigger for the drift populator lambda'
+      ScheduleExpression:
+        Ref: CustomMetricPublishingPeriodicityParameter
+      State: ENABLED
+      Targets: 
+        -
+          Arn: !GetAtt LambdaPopulator.Arn
+          Id: 1234IDeclareAEBWar
+
+  PermissionForEventsToInvokeInitiatorLambda: 
+    DependsOn: [LambdaInitiator]
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaInitiator"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt: 
+          - "scheduleInitiatorLambda"
+          - "Arn"
+  PermissionForEventsToInvokeInitiatorLambda: 
+    DependsOn: [LambdaPopulator]
+    Type: AWS::Lambda::Permission
+    Properties: 
+      FunctionName: 
+        Ref: "LambdaPopulator"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt: 
+          - "schedulePopulatorLambda"
+          - "Arn"
+
+  # Lambdas
+  LambdaInitiator:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaServiceRole
+    Properties:
+      Handler: initiator.lambda_handler
+      CodeUri: . 
+      Description: 'The DD initiator function'
+      Environment:
+        Variables:
+          queueRef: !Ref DriftDetectionJobsInitiatedQueue
+      MemorySize: 256
+      Timeout: 5
+      Role: !GetAtt LambdaServiceRole.Arn
+      Runtime: python3.9
+
+  LambdaChecker:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaServiceRole
+    Properties:
+      Handler: checker.lambda_handler
+      CodeUri: . 
+      Description: 'The DD checker function'
+      Environment:
+        Variables:
+          dyDbNAme: !Ref MyTable
+      Events:
+        # https://aws.amazon.com/blogs/aws/aws-lambda-adds-amazon-simple-queue-service-to-supported-event-sources/?utm_source=feedburner&utm_medium=feed&utm_campaign=Feed%3A+AmazonWebServicesBlog+%28Amazon+Web+Services+Blog%29
+        # Attempt to use a direct Event binding, rather than Eventbridge.
+        MySQSEvent:
+          Type: "SQS"
+          Properties:
+            BatchSize: 1
+            Enabled: true
+            Queue: !GetAtt DriftDetectionJobsInitiatedQueue.Arn
+      MemorySize: 256
+      Timeout: 5
+      Role: !GetAtt LambdaServiceRole.Arn
+      Runtime: python3.9
+
+  LambdaPopulator:
+    Type: AWS::Serverless::Function
+    DependsOn: LambdaServiceRole
+    Properties:
+      Handler: populator.lambda_handler
+      CodeUri: . 
+      Description: 'The DD Cloudwatch populator function'
+      Environment:
+        Variables:
+          dyDbNAme: !Ref MyTable
+          nameSpaceForMetric: !Ref NameSpaceForCloudwatchMetricParameter
+      MemorySize: 256
+      Timeout: 5
+      Role: !GetAtt LambdaServiceRole.Arn
+      Runtime: python3.9
+
+  # Roles
+  LambdaServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Description: Allows Lambda functions to call DyDB, SQS, CF.
+      Path: /
+      # Unsure what this does?
+      # https://devops.stackexchange.com/questions/5094/what-is-the-purpose-of-assumerolepolicydocument-in-iam/5099
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [lambda.amazonaws.com]
+            Action: sts:AssumeRole
+      Policies:
+        # TODO: is this policy name going to get me into trouble? Does it need to be unique to the account?
+        - PolicyName: LambdaRolePolicy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              # TODO: least-priv these sloppy perms
+              - Effect: Allow
+                Action:
+                  - cloudformation:ListExports
+                  - route53:TestDNSAnswer
+                  - iam:ListServiceSpecificCredentials
+                  - iam:ListSigningCertificates
+                  - route53:ListHostedZonesByName
+                  - sns:ListEndpointsByPlatformApplication
+                  - iam:SimulateCustomPolicy
+                  - route53:GetHostedZoneCount
+                  - lambda:ListCodeSigningConfigs
+                  - iam:ListRolePolicies
+                  - cloudformation:ListStackResources
+                  - iam:ListPolicies
+                  - iam:GetRole
+                  - events:DescribeRule
+                  - route53:GetHealthCheckLastFailureReason
+                  - lambda:ListFunctions
+                  - iam:ListSAMLProviders
+                  - lambda:GetEventSourceMapping
+                  - events:ListConnections
+                  - lambda:ListAliases
+                  - route53:GetReusableDelegationSetLimit
+                  - route53:ListTagsForResources
+                  - events:DescribeArchive
+                  - lambda:GetFunctionConcurrency
+                  - route53:GetGeoLocation
+                  - iam:GetOpenIDConnectProvider
+                  - cloudformation:DetectStackSetDrift
+                  - iam:ListInstanceProfilesForRole
+                  - route53:GetCheckerIpRanges
+                  - lambda:ListTags
+                  - cloudformation:DescribeStackSetOperation
+                  - cloudformation:DescribeType
+                  - events:ListReplays
+                  - sns:GetTopicAttributes
+                  - iam:ListRoles
+                  - events:DescribeEventSource
+                  - events:ListEventBuses
+                  - route53:ListTagsForResource
+                  - iam:GetContextKeysForCustomPolicy
+                  - route53:ListHealthChecks
+                  - iam:ListGroups
+                  - lambda:GetCodeSigningConfig
+                  - iam:GetPolicyVersion
+                  - iam:ListServerCertificates
+                  - dynamodb:*
+                  - cloudformation:DescribeStackResource
+                  - iam:ListVirtualMFADevices                  
+                  - sns:CheckIfPhoneNumberIsOptedOut
+                  - iam:ListSSHPublicKeys
+                  - events:ListRuleNamesByTarget
+                  - events:ListPartnerEventSources
+                  - iam:ListOpenIDConnectProviderTags
+                  - route53:ListResourceRecordSets
+                  - apigateway:GET
+                  - events:ListTargetsByRule
+                  - sns:ListTagsForResource
+                  - iam:GetServerCertificate
+                  - cloudformation:DescribeStackInstance
+                  - iam:GetAccessKeyLastUsed
+                  - route53:ListTrafficPolicyInstancesByHostedZone
+                  - sns:GetSubscriptionAttributes
+                  - sns:ListPhoneNumbersOptedOut
+                  - sns:GetEndpointAttributes
+                  - lambda:ListFunctionsByCodeSigningConfig
+                  - lambda:ListEventSourceMappings
+                  - route53:GetHostedZoneLimit
+                  - cloudformation:ListTypeVersions
+                  - iam:GetAccountSummary
+                  - cloudformation:DescribeStackDriftDetectionStatus
+                  - route53:ListTrafficPolicyInstances
+                  - route53:GetTrafficPolicyInstanceCount
+                  - iam:ListMFADevices
+                  - lambda:GetLayerVersionPolicy
+                  - route53:ListTrafficPolicies
+                  - route53:GetDNSSEC
+                  - events:DescribeApiDestination
+                  - cloudformation:ListStacks
+                  - iam:GetInstanceProfile
+                  - sns:ListSMSSandboxPhoneNumbers
+                  - lambda:GetFunction
+                  - iam:ListUserPolicies
+                  - route53:GetReusableDelegationSet
+                  - route53:ListTrafficPolicyInstancesByPolicy
+                  - cloudformation:ListStackSets
+                  - iam:ListPolicyVersions
+                  - iam:ListOpenIDConnectProviders
+                  - lambda:GetFunctionEventInvokeConfig
+                  - iam:ListUsers
+                  - iam:ListUserTags
+                  - iam:GetAccountPasswordPolicy
+                  - iam:ListRoleTags
+                  - route53:ListTrafficPolicyVersions
+                  - iam:GenerateServiceLastAccessedDetails
+                  - route53:GetHealthCheck
+                  - lambda:GetFunctionConfiguration
+                  - cloudformation:ListTypeRegistrations
+                  - cloudformation:DescribeStackEvents
+                  - lambda:GetProvisionedConcurrencyConfig
+                  - cloudformation:BatchDescribeTypeConfigurations
+                  - lambda:ListLayers
+                  - lambda:GetAlias
+                  - cloudformation:DescribeChangeSet
+                  - iam:GetCredentialReport
+                  - sns:ListSubscriptionsByTopic
+                  - iam:GetPolicy
+                  - iam:ListEntitiesForPolicy
+                  - route53:ListVPCAssociationAuthorizations
+                  - lambda:GetFunctionCodeSigningConfig
+                  - events:TestEventPattern
+                  - route53:GetAccountLimit
+                  - cloudformation:GetStackPolicy
+                  - events:ListTagsForResource
+                  - iam:GetRolePolicy
+                  - route53:GetTrafficPolicy
+                  - cloudformation:ValidateTemplate
+                  - sns:GetSMSAttributes
+                  - iam:GenerateCredentialReport
+                  - events:DescribePartnerEventSource
+                  - sns:ListTopics
+                  - iam:GetServiceLastAccessedDetails
+                  - sqs:*
+                  - route53:ListQueryLoggingConfigs
+                  - cloudformation:EstimateTemplateCost
+                  - iam:GetServiceLinkedRoleDeletionStatus
+                  - route53:ListHostedZonesByVPC
+                  - events:DescribeReplay
+                  - route53:ListGeoLocations
+                  - iam:ListAttachedGroupPolicies
+                  - route53:GetTrafficPolicyInstance
+                  - iam:ListPolicyTags
+                  - iam:ListAccessKeys
+                  - cloudformation:ListImports
+                  - iam:ListGroupPolicies
+                  - iam:GetSSHPublicKey
+                  - route53:ListHostedZones
+                  - sns:ListSubscriptions
+                  - cloudformation:DescribeTypeRegistration
+                  - events:ListArchives
+                  - sns:ListOriginationNumbers
+                  - iam:ListServerCertificateTags
+                  - iam:ListAccountAliases
+                  - iam:GetUser
+                  - iam:GetLoginProfile
+                  - sns:ListPlatformApplications
+                  - cloudformation:ListStackInstances
+                  - route53:GetHostedZone
+                  - cloudformation:ListStackSetOperationResults
+                  - lambda:ListProvisionedConcurrencyConfigs
+                  - iam:SimulatePrincipalPolicy
+                  - iam:ListAttachedRolePolicies
+                  - iam:ListSAMLProviderTags
+                  - events:ListRules
+                  - lambda:ListLayerVersions
+                  - iam:GetAccountAuthorizationDetails
+                  - route53:GetHealthCheckCount
+                  - route53:ListReusableDelegationSets
+                  - cloudformation:DescribeStackResources
+                  - sns:GetPlatformApplicationAttributes
+                  - cloudformation:DescribeStacks
+                  - events:DescribeEventBus
+                  - lambda:ListFunctionEventInvokeConfigs
+                  - cloudformation:DescribeStackResourceDrifts
+                  - iam:GetUserPolicy
+                  - cloudformation:GetTemplate
+                  - iam:ListGroupsForUser
+                  - iam:GetGroupPolicy
+                  - cloudformation:DetectStackDrift
+                  - route53:GetChange
+                  - lambda:ListVersionsByFunction
+                  - lambda:GetLayerVersion
+                  - cloudformation:ListStackSetOperations
+                  - iam:GetServiceLastAccessedDetailsWithEntities
+                  - cloudformation:ListTypes
+                  - iam:ListPoliciesGrantingServiceAccess
+                  - events:DescribeConnection
+                  - lambda:GetAccountSettings
+                  - iam:ListInstanceProfileTags
+                  - iam:GetGroup
+                  - iam:GetContextKeysForPrincipalPolicy
+                  - iam:GetOrganizationsAccessReport
+                  - cloudformation:DetectStackResourceDrift
+                  - events:ListPartnerEventSourceAccounts
+                  - events:ListEventSources
+                  - iam:GenerateOrganizationsAccessReport
+                  - iam:ListAttachedUserPolicies
+                  - cloudformation:DescribeAccountLimits
+                  - iam:GetSAMLProvider
+                  - route53:GetQueryLoggingConfig
+                  - events:ListApiDestinations
+                  - route53:GetHealthCheckStatus
+                  - iam:ListInstanceProfiles
+                  - cloudformation:DescribePublisher
+                  - cloudformation:GetTemplateSummary
+                  - cloudformation:DescribeStackSet
+                  - sns:GetSMSSandboxAccountStatus
+                  - iam:ListMFADeviceTags
+                  - lambda:GetPolicy
+                  - cloudformation:ListChangeSets
+                  - cloudwatch:PutMetricData
+                Resource: '*'
+      ManagedPolicyArns:
+        # Seems sloppy to explicitly refer to this. Hopefully the ARN is static.
+        - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # Important. Gives Lambda perms to write to CWatch.
+

@@ -109,7 +109,6 @@ Resources:
   LambdaServiceRole:
     Type:  AWS::IAM::Role
     Properties:
-      RoleName: LambdaServiceRole
       Description: Allows Lambda functions to call DyDB, SQS.
       Path: /
       # Unsure what this does?
