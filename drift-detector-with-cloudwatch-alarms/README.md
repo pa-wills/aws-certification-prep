@@ -1,8 +1,7 @@
  # Simple SQS Producer Consumer
-This is a project to (1) autmotate periodic Drift Detection for all running CF Stacks, and (2) alert me in CloudWatch when it comes back red. So. A project with some enduring utility, but also a valuable opportunity to explore an unfamiliar Product.
+This is a project to (1) automtate periodic Drift Detection for all running CF Stacks, and (2) alert me in CloudWatch when it comes back red. So. A project with some enduring utility, but also a valuable opportunity to explore an unfamiliar Product.
 
-Configuration drift is bad bad bad bad bad. And AWS usefully provides some promitives to help with this. AWS CloudFormation Drift Detection being the one I am most familiar with. AWS Config looks like a full CMDB implementation (though not with full AWS product coverage).
-
+Configuration drift is bad bad bad bad bad. And AWS usefully provides some primitives to help with this. AWS CloudFormation Drift Detection being the one I am most familiar with. AWS Config looks like a full CMDB implementation (though not with full AWS product coverage).
 
 ## Design
 1. Lambda function with following logic: 1. detect all Stacks, 2. run detect_stack_drift() on all, 3. push Message to a SQS Queue with the associated StackDriftDetectionIDs. Control invocation with a scheduled EventBridge Event (and parameterise invocation periodicty).

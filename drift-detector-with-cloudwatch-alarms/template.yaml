@@ -13,10 +13,12 @@ Parameters:
   CustomMetricPublishingPeriodicityParameter:
     Default: "rate(5 minutes)"
     Type: String
+  MetricNameForCloudwatchMetricParameter:
+    Default: "NumOutOfSync"
+    Type: String
   NameSpaceForCloudwatchMetricParameter:
     Default: "drift-detector-with-cloudwatch"
     Type: String
-
 
 Resources:
   # Queues
@@ -152,11 +154,25 @@ Resources:
       Environment:
         Variables:
           dyDbNAme: !Ref MyTable
+          metricNameForMetric: !Ref MetricNameForCloudwatchMetricParameter
           nameSpaceForMetric: !Ref NameSpaceForCloudwatchMetricParameter
       MemorySize: 256
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+
+  # Alarm
+  DriftDetectionAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: "Check the Stacks. Something has drifted off the baseline configuration."
+      ComparisonOperator: GreaterThanThreshold
+      EvaluationPeriods: 1
+      MetricName: !Ref MetricNameForCloudwatchMetricParameter
+      Namespace: !Ref NameSpaceForCloudwatchMetricParameter
+      Statistic: "Average"
+      Period: 300
+      Threshold: 0
 
   # Roles
   LambdaServiceRole:
