@@ -75,6 +75,7 @@ Resources:
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Tracing: Active
 
   LambdaChecker:
     Type: AWS::Serverless::Function
@@ -99,6 +100,7 @@ Resources:
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Tracing: Active
 
   LambdaPopulator:
     Type: AWS::Serverless::Function
@@ -121,6 +123,7 @@ Resources:
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Tracing: Active
 
   # Alarm
   DriftDetectionAlarm:
@@ -152,6 +155,7 @@ Resources:
             Action: sts:AssumeRole
       Policies:
         # TODO: is this policy name going to get me into trouble? Does it need to be unique to the account?
+        # Doesn't seem to be avoidable to name this object. Need something that is going to make more universal sense.
         - PolicyName: LambdaRolePolicy
           PolicyDocument:
             Version: 2012-10-17
@@ -362,4 +366,6 @@ Resources:
       ManagedPolicyArns:
         # Seems sloppy to explicitly refer to this. Hopefully the ARN is static.
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # Important. Gives Lambda perms to write to CWatch.
+        - "arn:aws:iam::aws:policy/service-role/AWSXRayDaemonWriteAccess" # Important. Gives Lambda perms to write to X-Ray.
+
 

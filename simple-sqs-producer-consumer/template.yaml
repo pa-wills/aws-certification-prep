@@ -71,6 +71,7 @@ Resources:
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Tracing: Active
 
   LambdaConsumer:
     Type: AWS::Serverless::Function
@@ -91,6 +92,7 @@ Resources:
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Tracing: Active
 
   PermissionForEventsToInvokeProducerLambda: 
     DependsOn: [LambdaProducer]
@@ -133,6 +135,7 @@ Resources:
       ManagedPolicyArns:
         # Seems sloppy to explicitly refer to this. Hopefully the ARN is static.
         - "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole" # Important. Gives Lambda perms to write to CWatch.
+        - "arn:aws:iam::aws:policy/service-role/AWSXRayDaemonWriteAccess" # Important. Gives Lambda perms to write to X-Ray.
 
 
 
