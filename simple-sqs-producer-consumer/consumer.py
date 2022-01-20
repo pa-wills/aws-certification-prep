@@ -3,16 +3,7 @@ from random import randrange
 import boto3
 import datetime
 import json
-
-from aws_xray_sdk.core import xray_recorder
-from aws_xray_sdk.core import patch_all
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-patch_all()
-
-lambdaClient = boto3.client('lambda')
-lambdaClient.get_account_settings()
+import os
 
 def lambda_handler(event, context):
     dydb = boto3.resource("dynamodb")
@@ -29,7 +20,15 @@ def lambda_handler(event, context):
         ttl = int(datetime.datetime.now().timestamp()) + (3600 * 2) # I.e. Now + 2 hours. 
         # INVARIANT: Row count should be ~<= 60 due to TTL.
 
-        table = dydb.Table("Sums")
+        table = dydb.Table(os.environ['tableRef'])
+        Item = {
+            'DateTime': str(sentTimeStampStr),
+            'operand_1': operand_1,
+            'operand_2': operand_2,
+            'sum': (operand_1 + operand_2),
+            'ttl': ttl
+        }
+        print(Item)
         response_dydb = table.put_item(
             Item = {
                 'DateTime': str(sentTimeStampStr),
@@ -43,4 +42,5 @@ def lambda_handler(event, context):
         # Lambda does it for me. Assuming successful processing.
         return {
             'statusCode': 200,
+            'response_dydb': json.dumps(str(response_dydb))
         }

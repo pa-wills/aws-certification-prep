@@ -12,7 +12,7 @@ Parameters:
     Default: 30
     Type: Number
   ScheduleProducerPeriodicityParameter:
-    Default: "rate(2 minutes)"
+    Default: "rate(10 minutes)"
     Type: String
 
 Resources:
