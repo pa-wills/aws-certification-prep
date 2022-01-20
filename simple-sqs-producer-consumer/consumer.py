@@ -4,6 +4,16 @@ import boto3
 import datetime
 import json
 
+from aws_xray_sdk.core import xray_recorder
+from aws_xray_sdk.core import patch_all
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+patch_all()
+
+lambdaClient = boto3.client('lambda')
+lambdaClient.get_account_settings()
+
 def lambda_handler(event, context):
     dydb = boto3.resource("dynamodb")
     print("Event:" + str(event))

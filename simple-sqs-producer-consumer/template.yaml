@@ -23,10 +23,7 @@ Resources:
         Ref: QueueDelaySecondsParameter
       MessageRetentionPeriod: 
         Ref: QueueMessageRetentionPeriodParameter
-      QueueName: MyQueue
       ReceiveMessageWaitTimeSeconds: 0
-#      RedriveAllowPolicy: Json
-#      RedrivePolicy: Json
       VisibilityTimeout: 
         Ref: QueueVisibilityTimeoutParameter
 
@@ -40,24 +37,9 @@ Resources:
       KeySchema:
         - AttributeName: "DateTime"
           KeyType: "HASH"
-      TableName: Sums
       TimeToLiveSpecification:
         AttributeName: "ttl"
         Enabled: true
-
-  # Event Bridges
-  scheduleProducerLambda:
-    DependsOn: [LambdaProducer]
-    Type: AWS::Events::Rule
-    Properties:
-      Description: 'This is the trigger for the producer lambda'
-      ScheduleExpression:
-        Ref: ScheduleProducerPeriodicityParameter
-      State: ENABLED
-      Targets: 
-        -
-          Arn: !GetAtt LambdaProducer.Arn
-          Id: 1234IDeclareAEBWar
 
   # Lambdas
   LambdaProducer:
@@ -67,6 +49,14 @@ Resources:
       Handler: producer.lambda_handler
       CodeUri: . 
       Description: 'The producer function'
+      Environment:
+        Variables:
+          queueRef: !Ref MyQueue
+      Events:
+        ProducerScheduleEvent:
+          Type: Schedule
+          Properties:
+            Schedule: !Ref ScheduleProducerPeriodicityParameter
       MemorySize: 256
       Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
@@ -80,10 +70,13 @@ Resources:
       Handler: consumer.lambda_handler
       CodeUri: . 
       Description: 'The consumer function'
+      Environment:
+        Variables:
+          tableRef: !Ref MyTable
       Events:
         # https://aws.amazon.com/blogs/aws/aws-lambda-adds-amazon-simple-queue-service-to-supported-event-sources/?utm_source=feedburner&utm_medium=feed&utm_campaign=Feed%3A+AmazonWebServicesBlog+%28Amazon+Web+Services+Blog%29
         # Attempt to use a direct Event binding, rather than Eventbridge.
-        MySQSEvent:
+        ConsumerSQSEvent:
           Type: "SQS"
           Properties:
             BatchSize: 1
@@ -93,19 +86,6 @@ Resources:
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
       Tracing: Active
-
-  PermissionForEventsToInvokeProducerLambda: 
-    DependsOn: [LambdaProducer]
-    Type: AWS::Lambda::Permission
-    Properties: 
-      FunctionName: 
-        Ref: "LambdaProducer"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn:
-        Fn::GetAtt: 
-          - "scheduleProducerLambda"
-          - "Arn"
 
   # Roles
   LambdaServiceRole:
