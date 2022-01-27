@@ -47,8 +47,8 @@ Resources:
     DependsOn: LambdaServiceRole
     Properties:
       Handler: producer.lambda_handler
-      CodeUri: . 
-      Description: 'The producer function'
+      CodeUri: .
+      Description: 'The producer function'  
       Environment:
         Variables:
           queueRef: !Ref MyQueue
@@ -57,10 +57,12 @@ Resources:
           Type: Schedule
           Properties:
             Schedule: !Ref ScheduleProducerPeriodicityParameter
+      Layers:
+        - !Ref LayerXRay
       MemorySize: 256
-      Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Timeout: 5
       Tracing: Active
 
   LambdaConsumer:
@@ -68,7 +70,7 @@ Resources:
     DependsOn: LambdaServiceRole
     Properties:
       Handler: consumer.lambda_handler
-      CodeUri: . 
+      CodeUri: .
       Description: 'The consumer function'
       Environment:
         Variables:
@@ -81,11 +83,23 @@ Resources:
           Properties:
             BatchSize: 1
             Queue: !GetAtt MyQueue.Arn
+      Layers:
+        - !Ref LayerXRay
       MemorySize: 256
-      Timeout: 5
       Role: !GetAtt LambdaServiceRole.Arn
       Runtime: python3.9
+      Timeout: 5
       Tracing: Active
+
+  LayerXRay:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: x-ray-lib
+      Description: Dependencies for the x-ray SDK.
+      # Make sure the layer file is built, and in the S3 bucket, or this won't work.
+      ContentUri: "s3://simple-sqs-producer-consumer-store/x-ray-libs-339d85da-ea17-4a98-a207-18257d7e029c.zip"
+      CompatibleRuntimes:
+        - python3.9
 
   # Roles
   LambdaServiceRole:
