@@ -1,0 +1,94 @@
+# Adapted from: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-autoscaling-launchconfiguration.html
+
+AWSTemplateFormatVersion: 2010-09-09
+
+Parameters:
+  LatestAmiId:
+    Description: Region specific image from the Parameter Store
+    Type: 'AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>'
+    Default: '/aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2'
+  InstanceType:
+    Description: Amazon EC2 instance type for the instances
+    Type: String
+    AllowedValues:
+      - t2.nano
+    Default: t2.nano
+
+Resources:
+
+  MyLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: MyLaunchTemplate
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt
+            - WorkerInstanceProfile
+            - Arn
+        DisableApiTermination: true
+        ImageId: ami-0d6560f3176dc9ec0
+        InstanceType: t2.nano
+        SecurityGroupIds: 
+          - !GetAtt
+            - myEC2SecurityGroup
+            - GroupId
+        UserData: 
+          Fn::Base64:
+            Fn::Join:
+              - "\n"
+              - - "#! /usr/bin/bash"
+                - "sudo yum update -y"
+                - "sudo yum install httpd -y"
+                - "sudo systemctl enable httpd"
+                - "sudo systemctl start httpd"
+#        VpcId: Fn::ImportValue: pwills-prod-vpc1
+
+  myEC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: SG to test ping
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  myASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+      MaxSize: '1'
+      MinSize: '0'
+      VPCZoneIdentifier: # Gah. Hack. TODO: parameterize.
+        - 'subnet-07034799bd682d955'
+        - 'subnet-0761d994908ae1e80'
+        - 'subnet-03d7d65a14c82c772'
+
+
+  WorkerInstanceProfile:
+    Type: "AWS::IAM::InstanceProfile"
+    Properties: 
+      Roles:
+        - !Ref WorkerInstanceRole
+
+  WorkerInstanceRole:
+    Type: "AWS::IAM::Role"
+    Properties: 
+      AssumeRolePolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - 
+            Effect: "Allow"
+            Principal:
+              Service:
+                - "ec2.amazonaws.com"
+            Action: 
+              - "sts:AssumeRole"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      Path: "/"
+
+
+
