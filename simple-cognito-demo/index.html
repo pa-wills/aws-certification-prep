@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Cognito SPA Demo</title>
+</head>
+<body>
+  <h1>Cognito User Pool Demo</h1>
+  <button onclick="login()">Login</button>
+  <pre id="output"></pre>
+
+  <script>
+    const domain = "https://__COGNITO_DOMAIN__.auth.__REGION__.amazoncognito.com";
+    const clientId = "__CLIENT_ID__";
+    const redirectUri = window.location.origin;
+
+    function login() {
+      window.location = `${domain}/login?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&scope=openid+email+profile`;
+    }
+
+    // Optionally, you could parse the ?code=... param here and display it
+  </script>
+</body>
+</html>
