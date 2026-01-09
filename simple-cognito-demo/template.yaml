@@ -3,41 +3,19 @@
 
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  Minimal Cognito User Pool + S3 static website demonstrator.
-  Auth via Cognito Hosted UI (OAuth2 Authorization Code Grant).
-  Uses a custom Lambda resource to fetch index.html from an external URL.
-
-Parameters:
-  IndexHtmlUrl:
-    Type: String
-    Description: HTTPS URL to the external index.html file
+  Minimal Cognito User Pool + S3 static website demonstrator with CloudFront for HTTPS.
 
 Resources:
 
-  ### S3 STATIC WEBSITE ###
+  ### S3 BUCKET ###
   SiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      WebsiteConfiguration:
-        IndexDocument: index.html
       PublicAccessBlockConfiguration:
         BlockPublicAcls: false
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
-
-  SiteBucketPolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket: !Ref SiteBucket
-      PolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Sid: PublicRead
-            Effect: Allow
-            Principal: '*'
-            Action: s3:GetObject
-            Resource: !Sub '${SiteBucket.Arn}/*'
 
   ### COGNITO USER POOL ###
   UserPool:
@@ -71,9 +49,9 @@ Resources:
         - email
         - profile
       CallbackURLs:
-        - !Sub 'http://${SiteBucket.WebsiteURL}'
+        - !Sub 'https://${SiteDistribution.DomainName}'
       LogoutURLs:
-        - !Sub 'http://${SiteBucket.WebsiteURL}'
+        - !Sub 'https://${SiteDistribution.DomainName}'
       SupportedIdentityProviders:
         - COGNITO
 
@@ -81,8 +59,8 @@ Resources:
   UserPoolDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      Domain: !Sub 'cognito-demo-${AWS::AccountId}'
       UserPoolId: !Ref UserPool
+      Domain: !Sub 'demo${AWS::AccountId}${AWS::Region}'
 
   ### LAMBDA ROLE FOR CUSTOM RESOURCE ###
   IndexUploaderRole:
@@ -185,12 +163,39 @@ Resources:
       CognitoDomain: !Ref UserPoolDomain
       ClientId: !Ref UserPoolClient
       Region: !Ref AWS::Region
-      IndexHtmlUrl: !Ref IndexHtmlUrl
+      IndexHtmlUrl: 'https://raw.githubusercontent.com/pa-wills/aws-certification-prep/refs/heads/dev/simple-cognito-demo/index.html' # HACK.
+
+  ### CLOUDFRONT DISTRIBUTION ###
+  SiteDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          - Id: S3Origin
+            DomainName: !GetAtt SiteBucket.DomainName
+            S3OriginConfig: {}
+        DefaultCacheBehavior:
+          TargetOriginId: S3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: false
+            Cookies:
+              Forward: none
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
 
 Outputs:
   WebsiteURL:
-    Description: S3 static website URL
-    Value: !Sub 'http://${SiteBucket.WebsiteURL}'
+    Description: CloudFront HTTPS URL for the SPA
+    Value: !Sub 'https://${SiteDistribution.DomainName}'
 
   CognitoHostedUI:
     Description: Cognito Hosted UI base URL
