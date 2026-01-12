@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ECS Fargate pipeline for processing re:Invent videos.
+  Downloads video, generates VTT, chunks text, summarizes chunks via LLM, writes to S3.
+
+Parameters:
+  DockerImageArn:
+    Type: String
+    Description: ARN of the Docker image in ECR to use for the ECS task
+#  OutputBucketName:
+#    Type: String
+#    Description: Name of the S3 bucket for storing chunks and summaries
+
+Resources:
+
+  # S3 bucket for output
+  PipelineOutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+#      BucketName: !Ref OutputBucketName
+      VersioningConfiguration:
+        Status: Enabled
+
+  # ECS Cluster
+  VideoPipelineCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: reinvent-video-pipeline
+
+  # IAM role for ECS task
+  VideoPipelineTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: reinvent-pipeline-task-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
+  # ECS Task Definition
+  VideoPipelineTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: reinvent-pipeline-task
+      Cpu: '512'               # adjust as needed
+      Memory: '1024'           # adjust as needed
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ExecutionRoleArn: !GetAtt VideoPipelineTaskRole.Arn
+      TaskRoleArn: !GetAtt VideoPipelineTaskRole.Arn
+      ContainerDefinitions:
+        - Name: video-pipeline
+          Image: !Ref DockerImageArn
+          Essential: true
+          EntryPoint: ["python", "runVideoPipeline.py"]
+          # Command will be overridden at run-time with URL + flags
+          Environment:
+            - Name: OUTPUT_BUCKET
+              Value: !Ref PipelineOutputBucket
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: /ecs/reinvent-pipeline
+              awslogs-region: !Ref "AWS::Region"
+              awslogs-stream-prefix: ecs
+
+Outputs:
+  ECSClusterName:
+    Description: Name of ECS cluster
+    Value: !Ref VideoPipelineCluster
+  ECSVideoPipelineTaskRole:
+    Description: IAM Role ARN used by ECS tasks
+    Value: !GetAtt VideoPipelineTaskRole.Arn
+  PipelineOutputBucket:
+    Description: S3 bucket for storing chunks and summaries
+    Value: !Ref PipelineOutputBucket

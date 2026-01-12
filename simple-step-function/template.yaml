@@ -1,0 +1,181 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Step Functions Order Processing Demo
+
+Resources:
+
+  #################################
+  # IAM ROLE FOR LAMBDA FUNCTIONS
+  #################################
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  #################################
+  # LAMBDA FUNCTIONS
+  #################################
+  ValidateOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              required = ["orderId", "amount", "items"]
+              for r in required:
+                  if r not in event:
+                      raise Exception(f"Missing field: {r}")
+              return event
+
+  CheckInventoryFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import random
+          def handler(event, context):
+              event["inStock"] = random.choice([True, True, False])
+              return event
+
+  ChargePaymentFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          import random
+          def handler(event, context):
+              outcome = random.choice(["success", "timeout", "fatal"])
+              if outcome == "timeout":
+                  raise Exception("PaymentTimeout")
+              if outcome == "fatal":
+                  raise Exception("PaymentFailed")
+              event["payment"] = "charged"
+              return event
+
+  ShipOrderFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              event["shipment"] = "shipped"
+              event["trackingId"] = "TRACK123456"
+              return event
+
+  #################################
+  # IAM ROLE FOR STEP FUNCTIONS
+  #################################
+  StateMachineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: StepFunctionsInvokeLambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource: "*"
+
+  #################################
+  # STEP FUNCTIONS STATE MACHINE
+  #################################
+  OrderStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineType: STANDARD
+      RoleArn: !GetAtt StateMachineRole.Arn
+      DefinitionString: !Sub |
+        {
+          "StartAt": "ValidateOrder",
+          "States": {
+            "ValidateOrder": {
+              "Type": "Task",
+              "Resource": "${ValidateOrderFunction.Arn}",
+              "Next": "CheckInventory"
+            },
+            "CheckInventory": {
+              "Type": "Task",
+              "Resource": "${CheckInventoryFunction.Arn}",
+              "Next": "InventoryChoice"
+            },
+            "InventoryChoice": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.inStock",
+                  "BooleanEquals": true,
+                  "Next": "ChargePayment"
+                }
+              ],
+              "Default": "OutOfStock"
+            },
+            "OutOfStock": {
+              "Type": "Fail",
+              "Cause": "ItemOutOfStock"
+            },
+            "ChargePayment": {
+              "Type": "Task",
+              "Resource": "${ChargePaymentFunction.Arn}",
+              "Retry": [
+                {
+                  "ErrorEquals": ["PaymentTimeout"],
+                  "IntervalSeconds": 2,
+                  "MaxAttempts": 3,
+                  "BackoffRate": 2.0
+                }
+              ],
+              "Catch": [
+                {
+                  "ErrorEquals": ["States.ALL"],
+                  "Next": "PaymentFailed"
+                }
+              ],
+              "Next": "ShipOrder"
+            },
+            "PaymentFailed": {
+              "Type": "Fail",
+              "Cause": "PaymentProcessingFailed"
+            },
+            "ShipOrder": {
+              "Type": "Task",
+              "Resource": "${ShipOrderFunction.Arn}",
+              "Next": "OrderSucceeded"
+            },
+            "OrderSucceeded": {
+              "Type": "Succeed"
+            }
+          }
+        }
+
+Outputs:
+  StateMachineArn:
+    Description: Order Processing State Machine ARN
+    Value: !Ref OrderStateMachine
