@@ -16,7 +16,7 @@ phases:
     commands:
       - echo Building the Docker image for ARM64...
       - docker buildx create --use || true
-      - docker buildx build -f reinvent-pipeline/Dockerfile --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive -t $IMAGE_NAME:$IMAGE_TAG --load .
+      - docker buildx build -f reinvent-pipeline/Dockerfile --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive -t $IMAGE_NAME:$IMAGE_TAG --load reinvent-pipeline
       - docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_REPO:$IMAGE_TAG
   post_build:
     commands:
