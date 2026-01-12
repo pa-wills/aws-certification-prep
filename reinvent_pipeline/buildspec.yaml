@@ -12,6 +12,9 @@ phases:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
       - echo Build started on `date`
+      - pwd
+      - ls -la
+      - ls -la reinvent-pipeline || echo "reinvent-pipeline does not exist"
   build:
     commands:
       - echo Building the Docker image for ARM64...
