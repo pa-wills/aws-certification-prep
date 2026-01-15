@@ -77,9 +77,8 @@ Resources:
       ContainerDefinitions:
         - Name: video-pipeline
           Image: !Ref DockerImageArn
+          Command: ["https://www.youtube.com/watch?v=Ny4rrINHPe0"] # For now.....
           Essential: true
-          EntryPoint: ["python", "runVideoPipeline.py"]
-          # Command will be overridden at run-time with URL + flags
           Environment:
             - Name: OUTPUT_BUCKET
               Value: !Ref PipelineOutputBucket

@@ -15,6 +15,6 @@ COPY runVideoPipeline.py /app/runVideoPipeline.py
 
 ENV PYTHONPATH=/app
 
-ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]
+ENTRYPOINT ["python", "runVideoPipeline.py"]
 
 # Should take < 1 min to build.
