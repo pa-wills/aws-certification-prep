@@ -1,4 +1,4 @@
-# Start from a Python image
+# Start from a AWS-provided public Python image.
 FROM public.ecr.aws/docker/library/python:3.11-slim
 
 # Install ffmpeg
@@ -9,9 +9,5 @@ RUN pip install --upgrade yt-dlp openai tiktoken python-dotenv rich pydantic
 
 # Copy your pipeline code
 WORKDIR /app
-#COPY pipeline /app/pipeline
-#COPY runVideoPipeline.py /app/runVideoPipeline.py
 
-#ENV PYTHONPATH=/app
-
-#ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]
+# Should take ~8 mins to build.

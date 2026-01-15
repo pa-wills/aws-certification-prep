@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     IMAGE_NAME: reinvent-pipeline
-    ECR_REPO: 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest
+    ECR_REPO: 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest #TODO need to parameterize.
     IMAGE_TAG: latest
 
 phases:
@@ -18,9 +18,3 @@ phases:
       - docker buildx create --use || true
       - docker buildx build --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive --file reinvent-pipeline/Dockerfile-python -t $ECR_REPO --push reinvent-pipeline/
       - echo Build completed.
-  post_build:
-    commands:
-#      - echo Pushing the Docker image to ECR...
-#      - docker tag $ECR_REPO:$IMAGE_TAG $ECR_REPO:$IMAGE_TAG
-#      - docker push $ECR_REPO:$IMAGE_TAG
-#      - echo Pushed successfully

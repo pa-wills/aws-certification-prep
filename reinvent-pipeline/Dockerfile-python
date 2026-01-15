@@ -1,5 +1,5 @@
-# Start from a Python image
-FROM 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest
+# Start from the prior base image.
+FROM 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest # TODO: parameterize.
 
 # Install ffmpeg
 #RUN apt-get update && apt-get install -y ffmpeg curl && rm -rf /var/lib/apt/lists/*
@@ -15,3 +15,5 @@ COPY runVideoPipeline.py /app/runVideoPipeline.py
 ENV PYTHONPATH=/app
 
 ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]
+
+# Should take < 1 min to build.
