@@ -12,14 +12,11 @@ phases:
       - echo Logging in to Amazon ECR...
       - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_REPO
       - echo Build started on `date`
-      - pwd
-      - ls -la
-      - ls -la reinvent-pipeline || echo "reinvent-pipeline does not exist"
   build:
     commands:
       - echo Building the Docker image for ARM64...
       - docker buildx create --use || true
-      - docker buildx build --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive -t $IMAGE_NAME:$IMAGE_TAG --load reinvent_pipeline/
+      - docker buildx build --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive -t $IMAGE_NAME:$IMAGE_TAG --push reinvent_pipeline/
       - docker tag $IMAGE_NAME:$IMAGE_TAG $ECR_REPO:$IMAGE_TAG
   post_build:
     commands:

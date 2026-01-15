@@ -5,6 +5,10 @@ from pipeline.ingest import download_captions
 from pipeline.transcript import vtt_to_text
 from pipeline.process import chunk_text
 
+import sys
+print("Python started", flush = True)
+print(sys.argv, flush=True)
+
 parser = argparse.ArgumentParser()
 parser.add_argument("url", help="YouTube video URL")
 parser.add_argument("--no-llm", action="store_true", help="Skip LLM summarization")

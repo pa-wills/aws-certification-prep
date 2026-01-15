@@ -7,9 +7,6 @@ Parameters:
   DockerImageArn:
     Type: String
     Description: ARN of the Docker image in ECR to use for the ECS task
-#  OutputBucketName:
-#    Type: String
-#    Description: Name of the S3 bucket for storing chunks and summaries
 
 Resources:
 
@@ -39,8 +36,24 @@ Resources:
             Principal:
               Service: ecs-tasks.amazonaws.com
             Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ContainerBasicStuff
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ecr:GetAuthorizationToken"
+                  - "ecr:BatchCheckLayerAvailability"
+                  - "ecr:BatchGetImage"
+                  - "ecr:GetDownloadUrlForLayer"
+                  - "logs:CreateLogStream"
+                  - "logs:CreateLogGroup"
+                  - "logs:PutLogEvents"
+                Resource: "*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
+
 
   # ECS Task Definition
   VideoPipelineTaskDefinition:
