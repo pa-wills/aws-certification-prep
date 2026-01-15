@@ -9,9 +9,9 @@ RUN pip install --upgrade yt-dlp openai tiktoken python-dotenv rich pydantic
 
 # Copy your pipeline code
 WORKDIR /app
-COPY pipeline /app/pipeline
-COPY runVideoPipeline.py /app/runVideoPipeline.py
+#COPY pipeline /app/pipeline
+#COPY runVideoPipeline.py /app/runVideoPipeline.py
 
-ENV PYTHONPATH=/app
+#ENV PYTHONPATH=/app
 
-ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]
+#ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]

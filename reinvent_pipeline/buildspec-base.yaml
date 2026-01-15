@@ -2,8 +2,8 @@ version: 0.2
 
 env:
   variables:
-    IMAGE_NAME: reinvent-pipeline
-    ECR_REPO: 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline
+    IMAGE_NAME: reinvent-pipeline-base
+    ECR_REPO: 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline-base:latest
     IMAGE_TAG: latest
 
 phases:
@@ -16,8 +16,8 @@ phases:
     commands:
       - echo Building the Docker image for ARM64...
       - docker buildx create --use || true
-      - docker buildx build --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive --cache-from $ECR_REPO -t $ECR_REPO:$IMAGE_TAG --push reinvent_pipeline/
-      - echo Build completed on `date`
+      - docker buildx build --platform linux/arm64 --build-arg DEBIAN_FRONTEND=noninteractive --file Dockerfile-base -t $ECR_REPO:$IMAGE_TAG --push reinvent_pipeline-base/
+      - echo Build completed.
   post_build:
     commands:
 #      - echo Pushing the Docker image to ECR...

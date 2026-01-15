@@ -13,3 +13,4 @@ TODO:
 * Also - include a s3 bucket to serve as a cache.
 * I had to build a sec grp with outbound 443, and a log group to match what was in the config.
 
+* SPlit the buildspecs into two - so I don't need 10 mins every time i mess with my python code. I.e. a base image built infrequently, and then an interactive image built from the former.
