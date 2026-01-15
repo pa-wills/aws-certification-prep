@@ -8,5 +8,8 @@ To install
 * Instantiate the Stack, give the ARN of the Containerized Image as a parameter.
 
 TODO:
-* Build out the 
+* Build out the codebuild project. That is - take the ECR repo as an arg to the stack, then define and build the codebuild project, then create a custom resource which upon creation: runs the build job, then make the Task definition or possibly the Task itself as DependsOn the container image.
+* Also - make the stack define the ECR repo. Until then - parameterize its ARN as an input.
+* Also - include a s3 bucket to serve as a cache.
 * I had to build a sec grp with outbound 443, and a log group to match what was in the config.
+
