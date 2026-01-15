@@ -14,4 +14,4 @@ COPY runVideoPipeline.py /app/runVideoPipeline.py
 
 ENV PYTHONPATH=/app
 
-ENTRYPOINT ["python", "runVideoPipeline.py"]
+ENTRYPOINT ["python", "runVideoPipeline.py https://www.youtube.com/watch?v=Ny4rrINHPe0"]

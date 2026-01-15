@@ -71,6 +71,9 @@ Resources:
         - FARGATE
       ExecutionRoleArn: !GetAtt VideoPipelineTaskRole.Arn
       TaskRoleArn: !GetAtt VideoPipelineTaskRole.Arn
+      RuntimePlatform:
+        CpuArchitecture: ARM64
+        OperatingSystemFamily: LINUX
       ContainerDefinitions:
         - Name: video-pipeline
           Image: !Ref DockerImageArn
