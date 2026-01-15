@@ -77,7 +77,7 @@ Resources:
       ContainerDefinitions:
         - Name: video-pipeline
           Image: !Ref DockerImageArn
-          Command: ["https://www.youtube.com/watch?v=Ny4rrINHPe0"] # For now.....
+          # Command: ["https://www.youtube.com/watch?v=Ny4rrINHPe0"] # For now.....
           Essential: true
           Environment:
             - Name: OUTPUT_BUCKET
