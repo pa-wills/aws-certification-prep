@@ -1,5 +1,5 @@
 # Start from the prior base image.
-FROM 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest 
+FROM 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline-base:latest 
 # ^^ TODO: parameterize.
 
 # Install ffmpeg
