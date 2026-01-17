@@ -5,6 +5,7 @@ import boto3
 #from pipeline.ingest import download_captions
 from pipeline.transcript import vtt_to_text
 from pipeline.process import chunk_text
+from botocore.exceptions import ClientError
 
 import sys
 print("Python started", flush = True)
