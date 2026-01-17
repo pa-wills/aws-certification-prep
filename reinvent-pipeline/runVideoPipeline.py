@@ -1,7 +1,7 @@
 # pipeline/runVideoPipeline.py
 import argparse
 import os
-#import boto3
+import boto3
 #from pipeline.ingest import download_captions
 from pipeline.transcript import vtt_to_text
 from pipeline.process import chunk_text

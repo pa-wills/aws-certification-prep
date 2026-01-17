@@ -9,6 +9,7 @@ FROM 177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline-base:la
 #RUN pip install --upgrade yt-dlp openai tiktoken python-dotenv rich pydantic
 
 # Copy your pipeline code
+pip install boto3
 #WORKDIR /app
 COPY pipeline /app/pipeline
 COPY runVideoPipeline.py /app/runVideoPipeline.py
