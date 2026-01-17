@@ -55,6 +55,22 @@ Resources:
                   - "logs:CreateLogGroup"
                   - "logs:PutLogEvents"
                 Resource: "*"
+        - PolicyName: ManipulateTheRelevantDataFolders
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:get*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/"
+              - Effect: Allow
+                Action:
+                  - "s3:put*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks//"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonS3FullAccess
 
