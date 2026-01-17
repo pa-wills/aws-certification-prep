@@ -5,7 +5,7 @@ FROM public.ecr.aws/docker/library/python:3.11-slim
 RUN apt-get update && apt-get install -y ffmpeg curl && rm -rf /var/lib/apt/lists/*
 
 # Install yt-dlp
-RUN pip install --upgrade yt-dlp openai tiktoken python-dotenv rich pydantic
+RUN pip install --upgrade yt-dlp openai tiktoken python-dotenv rich pydantic boto3
 
 # Copy your pipeline code
 WORKDIR /app

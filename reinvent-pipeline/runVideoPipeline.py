@@ -27,7 +27,7 @@ try:
     print("Exists: ", exists)
     response = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = args.vttFile) # TODO: parameterize
     body = response["Body"]
-except ClientErro as e:
+except ClientError as e:
     raise
 
 # Convert VTT → clean text
