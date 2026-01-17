@@ -1,6 +1,7 @@
 def vtt_to_text(body):
-
+    text_lines = []
     for line in body.iter_lines():
+        line = line.decode("utf-8")
         if line.strip() == "" or "-->" in line or line.startswith("WEBVTT"):
             continue
         text_lines.append(line.strip())
