@@ -43,7 +43,7 @@ folderPath = "_3_ chunks/"
 for i, chunk in enumerate(chunks, 1):
     fileName = str(((args.vttFile)[:-4])) + "_Chunk_" + str(i).zfill(4) + ".txt"
     S3Key = f"{folderPath}{fileName}"
-    s3.put_object(Bucket = "reinvent-ml-pipeline-temp", Key = s3Key, Body = str(chunk))
+    s3.put_object(Bucket = "reinvent-ml-pipeline-temp", Key = S3Key, Body = str(chunk))
 #    chunk_file = os.path.join(
 #        output_dir, f"{os.path.splitext(os.path.basename(vtt_file))[0]}_chunk{idx}.txt"
 #    )
