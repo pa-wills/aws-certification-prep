@@ -24,9 +24,9 @@ args = parser.parse_args()
 
 s3  = boto3.client("s3")
 try:
-    exists = s3.head_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions" + str(args.vttFile))) # TODO: parameterize
+    exists = s3.head_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions/" + str(args.vttFile))) # TODO: parameterize
     print("Exists: ", exists)
-    response = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions" + str(args.vttFile))) # TODO: parameterize
+    response = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions/" + str(args.vttFile))) # TODO: parameterize
     body = response["Body"]
 except ClientError as e:
     raise
