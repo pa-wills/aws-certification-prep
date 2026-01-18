@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Description: >
-  ECS Fargate pipeline for processing re:Invent videos.
-  Downloads video, generates VTT, chunks text, summarizes chunks via LLM, writes to S3.
+  From VTTs, chunks text, summarizes chunks via LLM, writes to S3.
 
-Parameters:
-  DockerImageArn:
-    Type: String
-    Description: ARN of the Docker image in ECR to use for the ECS task
+#Parameters:
+#  DockerImageArn:
+#    Type: String
+#    Description: ARN of the Docker image in ECR to use for the ECS task
 
 Resources:
 
@@ -19,92 +19,91 @@ Resources:
         Status: Enabled
 
   # ECS Cluster
-  VideoPipelineCluster:
-    Type: AWS::ECS::Cluster
-    Properties:
-      ClusterName: reinvent-video-pipeline
+#  VideoPipelineCluster:
+#    Type: AWS::ECS::Cluster
+#    Properties:
+#      ClusterName: reinvent-video-pipeline
 
   # IAM role for ECS task
-  VideoPipelineTaskRole:
-    Type: AWS::IAM::Role
-    Properties:
-      RoleName: reinvent-pipeline-task-role
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Effect: Allow
-            Principal:
-              Service: ecs-tasks.amazonaws.com
-            Action: sts:AssumeRole
-      Policies:
-        - PolicyName: ContainerBasicStuff
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "ecr:GetAuthorizationToken"
-                  - "ecr:BatchCheckLayerAvailability"
-                  - "ecr:BatchGetImage"
-                  - "ecr:GetDownloadUrlForLayer"
-                  - "ecr:InitiateLayerUpload"
-                  - "ecr:UploadLayerPart"
-                  - "ecr:CompleteLayerUpload"
-                  - "ecr:PutImage"
-                  - "logs:CreateLogStream"
-                  - "logs:CreateLogGroup"
-                  - "logs:PutLogEvents"
-                Resource: "*"
-        - PolicyName: ManipulateTheRelevantDataFolders
-          PolicyDocument:
-            Version: "2012-10-17"
-            Statement:
-              - Effect: Allow
-                Action:
-                  - "s3:get*"
-                Resource: 
-                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/*"
-                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/"
-              - Effect: Allow
-                Action:
-                  - "s3:put*"
-                Resource: 
-                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/*"
-                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks//"
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AmazonS3FullAccess
+#  VideoPipelineTaskRole:
+#    Type: AWS::IAM::Role
+#    Properties:
+#      RoleName: reinvent-pipeline-task-role
+#      AssumeRolePolicyDocument:
+#        Version: '2012-10-17'
+#        Statement:
+#          - Effect: Allow
+#            Principal:
+#              Service: ecs-tasks.amazonaws.com
+#            Action: sts:AssumeRole
+#      Policies:
+#        - PolicyName: ContainerBasicStuff
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - "ecr:GetAuthorizationToken"
+#                  - "ecr:BatchCheckLayerAvailability"
+#                  - "ecr:BatchGetImage"
+#                  - "ecr:GetDownloadUrlForLayer"
+#                  - "ecr:InitiateLayerUpload"
+#                  - "ecr:UploadLayerPart"
+#                  - "ecr:CompleteLayerUpload"
+#                  - "ecr:PutImage"
+#                  - "logs:CreateLogStream"
+#                  - "logs:CreateLogGroup"
+#                  - "logs:PutLogEvents"
+#                Resource: "*"
+#        - PolicyName: ManipulateTheRelevantDataFolders
+#          PolicyDocument:
+#            Version: "2012-10-17"
+#            Statement:
+#              - Effect: Allow
+#                Action:
+#                  - "s3:get*"
+#                Resource: 
+#                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/*"
+#                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/"
+#              - Effect: Allow
+#                Action:
+#                  - "s3:put*"
+#                Resource: 
+#                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/*"
+#                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks//"
+#      ManagedPolicyArns:
+#        - arn:aws:iam::aws:policy/AmazonS3FullAccess
 
 
   # ECS Task Definition
-  VideoPipelineTaskDefinition:
-    Type: AWS::ECS::TaskDefinition
-    Properties:
-      Family: reinvent-pipeline-task
-      Cpu: '512'               # adjust as needed
-      Memory: '1024'           # adjust as needed
-      NetworkMode: awsvpc
-      RequiresCompatibilities:
-        - FARGATE
-      ExecutionRoleArn: !GetAtt VideoPipelineTaskRole.Arn
-      TaskRoleArn: !GetAtt VideoPipelineTaskRole.Arn
-      RuntimePlatform:
-        CpuArchitecture: ARM64
-        OperatingSystemFamily: LINUX
-      ContainerDefinitions:
-        - Name: video-pipeline
-          Image: !Ref DockerImageArn
-          Command: ["AWS reInvent 2025 - How well do you know EC2 (CMP356).vtt"]
-          Essential: true
-          Environment:
-            - Name: OUTPUT_BUCKET
-              Value: !Ref PipelineOutputBucket
-          LogConfiguration:
-            LogDriver: awslogs
-            Options:
-              awslogs-group: /ecs/reinvent-pipeline
-              awslogs-region: !Ref "AWS::Region"
-              awslogs-stream-prefix: ecs
-
+#  VideoPipelineTaskDefinition:
+#    Type: AWS::ECS::TaskDefinition
+#    Properties:
+#      Family: reinvent-pipeline-task
+#      Cpu: '512'               # adjust as needed
+#      Memory: '1024'           # adjust as needed
+#      NetworkMode: awsvpc
+#      RequiresCompatibilities:
+#        - FARGATE
+#      ExecutionRoleArn: !GetAtt VideoPipelineTaskRole.Arn
+#      TaskRoleArn: !GetAtt VideoPipelineTaskRole.Arn
+#      RuntimePlatform:
+#        CpuArchitecture: ARM64
+#        OperatingSystemFamily: LINUX
+#      ContainerDefinitions:
+#        - Name: video-pipeline
+#          Image: !Ref DockerImageArn
+#          Command: ["AWS reInvent 2025 - How well do you know EC2 (CMP356).vtt"]
+#          Essential: true
+#          Environment:
+#            - Name: OUTPUT_BUCKET
+#              Value: !Ref PipelineOutputBucket
+#          LogConfiguration:
+#            LogDriver: awslogs
+#            Options:
+#              awslogs-group: /ecs/reinvent-pipeline
+#              awslogs-region: !Ref "AWS::Region"
+#              awslogs-stream-prefix: ecs
 
   StateMachinec98d7906:
     Type: AWS::StepFunctions::StateMachine
@@ -237,7 +236,6 @@ Resources:
               - logs:DescribeLogGroups
             Resource: "*"
 
-
   WaitForVTTStubFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -286,15 +284,126 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  ProduceChunksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+#      FunctionName: ProduceChunksLambdaFunction
+      Runtime: python3.11
+      Handler: produceChunks.lambda_handler
+      Role: !GetAtt ProduceChunksFunctionExecutionRole.Arn
+#      Code:
+#        S3Bucket: YOUR_DEPLOYMENT_BUCKET_NAME
+#        S3Key: path/to/your/lambda-package.zip
+      Timeout: 300
+      MemorySize: 1024
+#      Environment:
+#        Variables:
+#          BUCKET_NAME: !Ref YourS3BucketName
+#          OUTPUT_PREFIX: "summaries/"
+#          BEDROCK_MODEL_ID: "amazon.titan-text-2024-12-17"
+#      Tags:
+#        - Key: Project
+#          Value: reinvent-ml
+
+  ProduceChunksFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ManipulateDataFoldersForProducingChunks
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:get*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_2_ transcriptions/"
+              - Effect: Allow
+                Action:
+                  - "s3:put*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  ProduceSummarisedChunksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+#      FunctionName: ProduceSummarisedsChunksLambdaFunction
+      Runtime: python3.11
+      Handler: produceSummarisedChunks.lambda_handler
+      Role: !GetAtt ProduceSummarisedChunksFunctionExecutionRole.Arn
+#      Code:
+#        S3Bucket: YOUR_DEPLOYMENT_BUCKET_NAME
+#        S3Key: path/to/your/lambda-package.zip
+      Timeout: 300
+      MemorySize: 1024
+#      Environment:
+#        Variables:
+#          BUCKET_NAME: !Ref YourS3BucketName
+#          OUTPUT_PREFIX: "summaries/"
+#          BEDROCK_MODEL_ID: "amazon.titan-text-2024-12-17"
+#      Tags:
+#        - Key: Project
+#          Value: reinvent-ml
+
+  ProduceSummarisedChunksFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ManipulateDataFoldersForProducingSummarisedChunks
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:get*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_3_ chunks/"
+              - Effect: Allow
+                Action:
+                  - "s3:put*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/"
+        - PolicyName: InvokeNovaModelsForProducingSummarisedChunks
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "bedrock:InvokeModel"
+                  - "bedrock:InvokeModelWithResponseStream"
+                Resource: 
+                  - "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-micro*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
 
 Outputs:
-  ECSClusterName:
-    Description: Name of ECS cluster
-    Value: !Ref VideoPipelineCluster
-  ECSVideoPipelineTaskRole:
-    Description: IAM Role ARN used by ECS tasks
-    Value: !GetAtt VideoPipelineTaskRole.Arn
+#  ECSClusterName:
+#    Description: Name of ECS cluster
+#    Value: !Ref VideoPipelineCluster
+#  ECSVideoPipelineTaskRole:
+#    Description: IAM Role ARN used by ECS tasks
+#    Value: !GetAtt VideoPipelineTaskRole.Arn
   PipelineOutputBucket:
     Description: S3 bucket for storing chunks and summaries
     Value: !Ref PipelineOutputBucket
