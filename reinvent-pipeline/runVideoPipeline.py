@@ -1,3 +1,5 @@
+# TODO: remove, as this is no longer required.
+
 # pipeline/runVideoPipeline.py
 import argparse
 import os

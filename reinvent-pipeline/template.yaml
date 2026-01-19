@@ -396,6 +396,65 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
+  ProduceSummariesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+#      FunctionName: ProduceSummarisedsChunksLambdaFunction
+      Runtime: python3.11
+      Handler: produceSummaries.lambda_handler
+      Role: !GetAtt ProduceSummariesFunctionExecutionRole.Arn
+#      Code:
+#        S3Bucket: YOUR_DEPLOYMENT_BUCKET_NAME
+#        S3Key: path/to/your/lambda-package.zip
+      Timeout: 300
+      MemorySize: 1024
+#      Environment:
+#        Variables:
+#          BUCKET_NAME: !Ref YourS3BucketName
+#          OUTPUT_PREFIX: "summaries/"
+#          BEDROCK_MODEL_ID: "amazon.titan-text-2024-12-17"
+#      Tags:
+#        - Key: Project
+#          Value: reinvent-ml
+
+  ProduceSummariesFunctionExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ManipulateDataFoldersForProducingSummaries
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "s3:get*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/"
+              - Effect: Allow
+                Action:
+                  - "s3:put*"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_5_ summaries/*"
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp/_5_ summaries/"
+        - PolicyName: InvokeNovaModelsForProducingSummaries
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "bedrock:InvokeModel"
+                Resource: 
+                  - "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-light*"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
 Outputs:
 #  ECSClusterName:

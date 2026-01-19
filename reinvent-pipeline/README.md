@@ -16,10 +16,13 @@ TODO:
 * SPlit the buildspecs into two - so I don't need 10 mins every time i mess with my python code. I.e. a base image built infrequently, and then an interactive image built from the former.
 
 
+sam build
 sam deploy \
   --stack-name reinvent-pipeline \
   --s3-bucket reinvent-pipeline-pipelineoutputbucket-uw7w6y69rnw8 \
   --region ap-southeast-2 \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
   --parameter-overrides DockerImageArn=177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest
+
+
 

@@ -2,7 +2,7 @@ import json
 import boto3
 import os
 
-from botocore.exceptions import ClientError
+#from botocore.exceptions import ClientError
 
 
 s3 = boto3.client("s3")
