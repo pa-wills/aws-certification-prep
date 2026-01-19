@@ -434,13 +434,18 @@ Resources:
             Statement:
               - Effect: Allow
                 Action:
-                  - "s3:get*"
+                  - "s3:GetObject"
                 Resource: 
                   - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/*"
                   - "arn:aws:s3:::reinvent-ml-pipeline-temp/_4_ summarised chunks/"
               - Effect: Allow
                 Action:
-                  - "s3:put*"
+                  - "s3:ListBucket"
+                Resource: 
+                  - "arn:aws:s3:::reinvent-ml-pipeline-temp" # Specify the bucket exactly, or suffer 403s...
+              - Effect: Allow
+                Action:
+                  - "s3:PutObject"
                 Resource: 
                   - "arn:aws:s3:::reinvent-ml-pipeline-temp/_5_ summaries/*"
                   - "arn:aws:s3:::reinvent-ml-pipeline-temp/_5_ summaries/"
@@ -452,7 +457,7 @@ Resources:
                 Action:
                   - "bedrock:InvokeModel"
                 Resource: 
-                  - "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-light*"
+                  - "arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-lite*"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 

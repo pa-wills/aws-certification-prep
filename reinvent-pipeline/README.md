@@ -22,7 +22,6 @@ sam deploy \
   --s3-bucket reinvent-pipeline-pipelineoutputbucket-uw7w6y69rnw8 \
   --region ap-southeast-2 \
   --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
-  --parameter-overrides DockerImageArn=177738943897.dkr.ecr.ap-southeast-2.amazonaws.com/reinvent-pipeline:latest
 
 
 

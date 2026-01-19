@@ -5,8 +5,8 @@ import boto3
 s3 = boto3.client("s3")
 bedrock = boto3.client("bedrock-runtime")
 
-BUCKET_NAME = os.environ["BUCKET_NAME"]
-MODEL_ID = "amazon.nova-light-v1:0"
+#BUCKET_NAME = os.environ["BUCKET_NAME"]
+MODEL_ID = "amazon.nova-lite-v1:0"
 
 SUMMARY_PROMPT_TEMPLATE = """
 You are a careful technical summarizer.
@@ -31,7 +31,7 @@ def lambda_handler(event, context):
     prefix = event["partialFilename"]
     response = s3.list_objects_v2(
         Bucket = "reinvent-ml-pipeline-temp",
-        Prefix = "_4_ summarised chunks/" + partialFilename
+        Prefix = "_4_ summarised chunks/" + prefix
     )
     print(response)
     if "Contents" not in response:
@@ -46,14 +46,15 @@ def lambda_handler(event, context):
 
         file_obj = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = key)
         text = file_obj["Body"].read().decode("utf-8").strip()
-        chunk_texts.append(text)
+        chunkTexts.append(text)
 
-    allChunksText = "\n\n".join(chunk_texts)
+    allChunksText = "\n\n".join(chunkTexts)
 
     # 3. Build prompt
     prompt = SUMMARY_PROMPT_TEMPLATE.format(
-        all_chunks=all_chunks_text
+        allChunksText = allChunksText
     )
+    print(prompt)
 
     # 4. Invoke Nova Light
     body = {
@@ -61,27 +62,26 @@ def lambda_handler(event, context):
             {
                 "role": "user",
                 "content": [
-                    { "type": "text", "text": prompt }
+                    {"text": prompt}
                 ]
             }
         ]
     }
 
-#    response = bedrock.invoke_model(
-#        modelId=MODEL_ID,
-#        contentType="application/json",
-#        accept="application/json",
-#        body=json.dumps(body)
-#    )
+    response = bedrock.invoke_model(
+        modelId = MODEL_ID,
+        contentType = "application/json",
+        accept = "application/json",
+        body = json.dumps(body)
+    )
 
- #   response_body = json.loads(response["body"].read())
-
- #   summary_text = response_body["output"]["message"]["content"][0]["text"]
+    print(response)
+    response_body = json.loads(response["body"].read())
+    summary_text = response_body["output"]["message"]["content"][0]["text"]
+    print(summary_text)
 
     # 5. Write final summary
-    base_name = partial_key.split("/")[-1]
-    output_key = f"summaries/{base_name}_summary.txt"
-
+    output_key = "_5_ summaries/" + event["partialFilename"] + "_summary.txt"
     s3.put_object(
         Bucket = "reinvent-ml-pipeline-temp",
         Key = output_key,
@@ -91,6 +91,5 @@ def lambda_handler(event, context):
 
     return {
         "status": "OK",
-        "summaryKey": output_key,
-        "inputChunks": len(chunk_texts)
+        "summaryKey": output_key
     }
