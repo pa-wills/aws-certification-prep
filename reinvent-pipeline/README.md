@@ -1,11 +1,11 @@
 # Reinvent summariser
-Talk URL-> yt_dlp -> cleaning -> chunking -> summarised chunks (w/ Bedrock) -> summarised talks (w/ Bedrock).
+Talk's Youtube URL -> [yt_dlp](https://github.com/yt-dlp/yt-dlp) -> cleaning -> chunking -> summarised chunks (w/ [AWS Bedrock](https://aws.amazon.com/bedrock/)) -> summarised talks (w/ [AWS Bedrock](https://aws.amazon.com/bedrock/)).
 
-I had initially conceived this as a full AWS e2e stack, replete with Step functions, subordinate lamdas, etc. But - it turns out that that's overkill. Instead I do all of the processing localling, and my only AWS touches are the inferences performed by Bedrock.
+I had initially conceived this as a full AWS e2e stack, replete with Step Functions, subordinate Lamdas, etc. But - it turns out: that's overkill. Instead I do all of the processing locally, and my only AWS touches are the inferences performed by [AWS Bedrock](https://aws.amazon.com/bedrock/).
 
 The pipeline is:
 
-1. Pull the VTTs for the individual talks.
+1. Pull the [VTT](https://www.w3.org/TR/webvtt1/)s for the individual talks.
 2. Clean the VTTs into continuous text, suitable for summarisation.
 3. Chunk the text.
 4. Invoke Bedrock to produce summaries of the chunks.
@@ -39,7 +39,7 @@ When applied to say Re:Invent 2025 - this yields a corpus of > 1,000 VTTs and > 
 
 
 # 2. Cleaning the VTTs (I.e. produceCleanTranscripts.py)
-The VTTs need to be cleansed of VTT artifacts that would otherwise interfere with inference. For example: timestamp information, various tags, repeated sentences.
+The VTTs need to be cleansed of VTT artifacts that would otherwise interfere with inference. For example: timestamp information, various tags, repeated sentences. What you want is output more akin to a verbatim transcript, devoid of metadata.
 
 Executing this step produces the same number of files as the prior stage. But - the total size of the uncompressed text summaries was ~1 tenth that of the previous stage (for Re:Invent 2025).
 
@@ -49,9 +49,9 @@ We then need to chunk that data. That is - split the outputs from the former sta
 
 
 # 4. Summarising the cleaned chunks (I.e. produceSummarisedChunks.py)
-Now we're going to use the cheapest of cheap Nova models to summarise those individual chunks. 
+Now we're going to use the cheapest of cheap Nova Models to summarise those individual chunks. 
 
-Two notes on this stage. Firstly we're going to use AWS services through boto3. I like to ensure this is going to work by using a venv. So, similar to before:
+Two notes on this stage. Firstly we're going to use AWS services through [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html). I like to ensure this is going to work by using a venv. So, similar to before:
 
 ```python3 -m venv ~/venvs/reinvent
 source ~/venvs/reinvent/bin/activate
@@ -59,7 +59,7 @@ pip install boto3
 python3 produceSummarisedChunks.py
 ```
 
-Secondly, you'll need to configure the AWS CLI in order for any of this to work, and whatever Identity you're using will need to be allowed to invoke bedrock:InvokeModel on resource resource: arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-micro-v1:0
+Secondly, you'll need to configure the AWS CLI in order for any of this to work, and whatever Identity you're using will need to be allowed to invoke [bedrock:InvokeModel](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html) on resource: [arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-micro-v1:0](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
 
 
 # 5. Reducing the summarised chunks to an overall summary for each talk (I.e. produceSummaries.py)
