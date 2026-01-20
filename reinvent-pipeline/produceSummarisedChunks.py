@@ -6,8 +6,8 @@ import boto3
 REGION = "ap-southeast-2"
 MODEL_ID = "amazon.nova-micro-v1:0"
 
-INPUT_ROOT =  "/Users/pwills/Desktop/reinvent 2025/_3_ Chunked, cleaned summaries/Technical Breakout Sessions/End-User Computing"
-OUTPUT_ROOT = "/Users/pwills/Desktop/reinvent 2025/_4_ Summarised chunks/Technical Breakout Sessions/End-User Computing"
+INPUT_ROOT =  "/Users/pwills/Desktop/reinvent 2025/_3_ Chunked, cleaned summaries/Technical Breakout Sessions/SaaS"
+OUTPUT_ROOT = "/Users/pwills/Desktop/reinvent 2025/_4_ Summarised chunks/Technical Breakout Sessions/SaaS"
 
 # Bedrock rate limiting (very important)
 DELAY_SECONDS = 0.5  # adjust to avoid throttling

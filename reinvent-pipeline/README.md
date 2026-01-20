@@ -13,7 +13,7 @@ The pipeline is:
 
 
 # 1. Pulling the VTTs
-I had tried to AWS'ify the download of the VTTs into a dockerized micro-service, but it was over-kill (it's in the early commits FWIW). Far easier is to just stand-up a python virtual environment (in my case on my mac), configure yt_dlp, and then download the playlists one at a time. I.e.
+I had tried to AWS'ify the download of the VTTs into a dockerized micro-service, but it was over-kill (it's in the early commits FWIW). Far easier is to just stand-up a [python virtual environment](https://docs.python.org/3/library/venv.html) (in my case on my mac), configure [yt_dlp](https://github.com/yt-dlp/yt-dlp), and then download the playlists one at a time. I.e.
 
 ```
 python3 -m venv venv
@@ -62,14 +62,18 @@ python3 produceSummarisedChunks.py
 Secondly, you'll need to configure the AWS CLI in order for any of this to work, and whatever Identity you're using will need to be allowed to invoke [bedrock:InvokeModel](https://docs.aws.amazon.com/bedrock/latest/APIReference/API_runtime_InvokeModel.html) on resource: [arn:aws:bedrock:ap-southeast-2::foundation-model/amazon.nova-micro-v1:0](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html).
 
 
-# 5. [Reducing the summarised chunks](produceSummaries.py))
+# 5. [Reducing the summarised chunks](produceSummaries.py)
+As before use a venv and ensure that your AWS CLI is configured with an Identity that's allowed to invoke the required model.
+
+```python3 -m venv ~/venvs/reinvent
+source ~/venvs/reinvent/bin/activate
+pip install boto3
+python3 produceSummaries.py
+```
 
 
+# Miscellaneous
+- All of the functions are recursive. Define the scope by setting the base directory parameters in the individual functions. In my case I am aggressive with the cleaning and chunking (which are 100% local), and I am careful with both summarisation stages as I learn the cost performance of Bedrock.
 
-
-
-
-# TODO:
-- Implement the State Machine properly.
 
 
