@@ -38,7 +38,7 @@ python3 -m yt_dlp \
 When applied to say Re:Invent 2025 - this yields a corpus of > 1,000 VTTs and > 400MBs of uncompressed text (which is enormous).
 
 
-# 2. [Cleaning the VTTs](produceCleanTranscripts.py))
+# 2. [Cleaning the VTTs](produceCleanTranscripts.py)
 The VTTs need to be cleansed of VTT artifacts that would otherwise interfere with inference. For example: timestamp information, various tags, repeated sentences. What you want is output more akin to a verbatim transcript, devoid of metadata.
 
 Executing this step produces the same number of files as the prior stage. But - the total size of the uncompressed text summaries was ~1 tenth that of the previous stage (for Re:Invent 2025).
