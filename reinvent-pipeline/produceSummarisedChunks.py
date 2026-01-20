@@ -1,14 +1,18 @@
-import json
-import boto3
 import os
+import json
+import time
+import boto3
 
-#from botocore.exceptions import ClientError
-
-
-s3 = boto3.client("s3")
-bedrock = boto3.client("bedrock-runtime", region_name="ap-southeast-2")
-
+REGION = "ap-southeast-2"
 MODEL_ID = "amazon.nova-micro-v1:0"
+
+INPUT_ROOT =  "/Users/pwills/Desktop/reinvent 2025/_3_ Chunked, cleaned summaries/Technical Breakout Sessions/End-User Computing"
+OUTPUT_ROOT = "/Users/pwills/Desktop/reinvent 2025/_4_ Summarised chunks/Technical Breakout Sessions/End-User Computing"
+
+# Bedrock rate limiting (very important)
+DELAY_SECONDS = 0.5  # adjust to avoid throttling
+
+bedrock = boto3.client("bedrock-runtime", region_name=REGION)
 
 SUMMARY_PROMPT_TEMPLATE = """
 You are a careful, technical summarizer.
@@ -24,46 +28,55 @@ Text:
 {chunkText}
 """
 
+# -----------------------------
+# Functions
+# -----------------------------
+def summarise_text(chunk_text):
+    prompt = SUMMARY_PROMPT_TEMPLATE.format(chunkText = chunk_text)
 
-def lambda_handler(event, context):
-	filename = event["filename"]
-	obj = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_3_ chunks/" + str(filename)))
-	chunkText = obj["Body"].read().decode("utf-8")
+    body = {
+        "messages": [
+            {
+            	"role": "user", 
+            	"content": [{"text": prompt}]
+            }
+        ]
+    }
 
-	prompt = SUMMARY_PROMPT_TEMPLATE.format(chunkText = chunkText)
-	print(prompt)
-	body = {
-		"messages": [
-			{
-				"role": "user", 
-				"content":  prompt
-			}
-		]
-	}
+    response = bedrock.invoke_model(
+        modelId = MODEL_ID,
+        contentType = "application/json",
+        accept = "application/json",
+        body = json.dumps(body)
+    )
 
-	response = bedrock.invoke_model(
-		modelId = MODEL_ID,
-		contentType = "application/json",
-		accept = "application/json",
-		body = json.dumps(body)
-	)
+    result = json.loads(response["body"].read())
+#    print(result)
+    return result["output"]["message"]["content"][0]["text"].strip()
 
-	result = json.loads(response["body"].read())
-	summary_text = result["results"][0]["outputText"].strip()
-	print(summary_text)
+def process_file(input_path, output_path):
+    with open(input_path, "r", encoding="utf-8") as f:
+        chunk_text = f.read()
 
-	# 4. Write summary back to S3
-	summary_key = key.replace("_3_ transcriptions/", "_4_ summarised chunks/")
+    summary = summarise_text(chunk_text)
 
-	s3.put_object(
-		Bucket = "reinvent-ml-pipeline-temp",
-		Key = summary_key,
-		Body = summary_text.encode("utf-8"),
-		ContentType = "text/plain"
-	)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        f.write(summary)
 
-	return {
-		"status": "ok",
-		"input": key,
-		"output": summary_key
-	}
+def recurse_and_summarise(input_root, output_root):
+    for root, _, files in os.walk(input_root):
+        for file in files:
+            if file.endswith(".txt"):
+                input_path = os.path.join(root, file)
+
+                rel_path = os.path.relpath(input_path, input_root)
+                output_path = os.path.join(output_root, rel_path)
+
+                print(f"Processing: {rel_path}")
+                process_file(input_path, output_path)
+
+                time.sleep(DELAY_SECONDS)
+
+if __name__ == "__main__":
+    recurse_and_summarise(INPUT_ROOT, OUTPUT_ROOT)

@@ -1,57 +1,51 @@
 # pipeline/runVideoPipeline.py
 import argparse
 import os
-import boto3
+#import boto3
 import sys
+import re
 
-from botocore.exceptions import ClientError
+#from botocore.exceptions import ClientError
+
+import os
+import re
+
+def chunk_text(text, chunk_size=500):
+    words = text.split()
+    for i in range(0, len(words), chunk_size):
+        yield " ".join(words[i:i + chunk_size])
 
 
-def lambda_handler(event, context):
-	filename = event["filename"]
-	print("Python started", flush = True)
-	print(filename)
+def recurse_and_chunk(base_input_dir, base_output_dir, chunk_size=500):
+    for root, _, files in os.walk(base_input_dir):
+        for file in files:
+            if file.endswith(".txt"):   # change to .vtt if needed
+                input_path = os.path.join(root, file)
 
-	s3  = boto3.client("s3")
-	try:
-		exists = s3.head_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions/" + str(filename))) # TODO: parameterize
-		print("Exists: ", exists)
-		response = s3.get_object(Bucket = "reinvent-ml-pipeline-temp", Key = ("_2_ transcriptions/" + str(filename))) # TODO: parameterize
-		body = response["Body"]
-	except ClientError as e:
-		raise
+                # Preserve directory structure
+                rel_path = os.path.relpath(input_path, base_input_dir)
+                base_output_path = os.path.join(base_output_dir, rel_path).replace(".txt", "")
 
-	# Convert VTT → clean text
-	text = vtt_to_text(body)
+                # Read file
+                with open(input_path, "r", encoding="utf-8") as f:
+                    text = f.read()
 
-	# Chunk text
-	chunks = chunk_text(text, chunkSize = 500)
+                # Create output directory
+                output_dir = os.path.dirname(base_output_path)
+                os.makedirs(output_dir, exist_ok=True)
 
-	# Write chunks to S3
-	#output_dir = "/app/output"
-	folderPath = "_3_ chunks/"
-	for i, chunk in enumerate(chunks, 1):
-		fileName = str(((filename)[:-4])) + "_Chunk_" + str(i).zfill(4) + ".txt"
-		S3Key = f"{folderPath}{fileName}"
-		s3.put_object(Bucket = "reinvent-ml-pipeline-temp", Key = S3Key, Body = str(chunk))
+                # Chunk and write
+                for idx, chunk in enumerate(chunk_text(text, chunk_size), start=1):
+                    chunk_filename = f"{os.path.basename(base_output_path)}_chunk_{idx:04d}.txt"
+                    chunk_path = os.path.join(output_dir, chunk_filename)
 
-	print(f"Created {len(chunks)} chunks. Done.")
+                    with open(chunk_path, "w", encoding="utf-8") as cf:
+                        cf.write(chunk)
 
-def vtt_to_text(body):
-	text_lines = []
-	for line in body.iter_lines():
-		line = line.decode("utf-8")
-		if line.strip() == "" or "-->" in line or line.startswith("WEBVTT"):
-			continue
-		text_lines.append(line.strip())
-	text = " ".join(text_lines)
-	return text
 
-def chunk_text(text, chunkSize = 500):
-	words = text.split()
-	chunks = []
-	for i in range(0, len(words), chunkSize):
-		chunks.append(" ".join(words[i : i + chunkSize]))
-	return chunks
+if __name__ == "__main__":
+    base_input_dir =  "/Users/pwills/Desktop/reinvent 2025/_2_ Cleaned summaries/"
+    base_output_dir = "/Users/pwills/Desktop/reinvent 2025/_3_ Chunked, cleaned summaries/"
 
+    recurse_and_chunk(base_input_dir, base_output_dir, chunk_size=500)
 
