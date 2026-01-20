@@ -15,7 +15,8 @@ The pipeline is:
 # 1. Pulling the VTTs
 I had tried to AWS'ify the download of the VTTs into a dockerized micro-service, but it was over-kill (it's in the early commits FWIW). Far easier is to just stand-up a python virtual environment (in my case on my mac), configure yt_dlp, and then download the playlists one at a time. I.e.
 
-```python3 -m venv venv
+```
+python3 -m venv venv
 source venv/bin/activate
 pip install yt-dlp
 yt-dlp --version
@@ -23,7 +24,8 @@ yt-dlp --version
 
 and then, for each playlist:
 
-```python3 -m yt_dlp \
+```
+python3 -m yt_dlp \
   --no-check-certificate \
   --skip-download \
   --write-auto-sub \
